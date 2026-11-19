@@ -1,12 +1,13 @@
 import asyncio
+from http import HTTPStatus
 
 from flask import abort, flash, redirect, render_template, url_for
-from yacut.yandex_disk import get_download_link, upload_files
 
+from constants import RESERVED_SHORT_IDS
 from yacut import app, db
 from yacut.forms import FileUploadForm, URLMapForm
 from yacut.models import URLMap
-from yacut.utils import get_unique_short_id
+from yacut.yandex_disk import get_download_link, upload_files
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -17,14 +18,18 @@ def index_view():
     if form.validate_on_submit():
         custom_id = form.custom_id.data
 
-        if custom_id == 'files' or (
-            custom_id and URLMap.query.filter_by(
-                short=custom_id
-            ).first()
+        if (
+            custom_id in RESERVED_SHORT_IDS
+            or (
+                custom_id
+                and URLMap.get_by_short(custom_id) is not None
+            )
         ):
-            flash('Предложенный вариант короткой ссылки уже существует.')
+            flash(
+                'Предложенный вариант короткой ссылки уже существует.'
+            )
         else:
-            short_id = custom_id or get_unique_short_id()
+            short_id = custom_id or URLMap.get_unique_short_id()
 
             url_map = URLMap(
                 original=form.original_link.data,
@@ -48,10 +53,10 @@ def index_view():
 
 @app.route('/<string:short_id>')
 def redirect_view(short_id):
-    url_map = URLMap.query.filter_by(short=short_id).first()
+    url_map = URLMap.get_by_short(short_id)
 
     if url_map is None:
-        abort(404)
+        abort(HTTPStatus.NOT_FOUND)
 
     if url_map.original.startswith('disk:'):
         file_path = url_map.original.removeprefix('disk:')
@@ -77,10 +82,10 @@ def files_view():
             results = asyncio.run(upload_files(files))
 
             for filename, file_path in results:
-                short_id = get_unique_short_id()
+                short_id = URLMap.get_unique_short_id()
 
                 url_map = URLMap(
-                    original=f'disk: {file_path}',
+                    original='disk:' + file_path,
                     short=short_id
                 )
                 db.session.add(url_map)

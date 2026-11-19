@@ -5,10 +5,7 @@ from uuid import uuid4
 import aiohttp
 from flask import current_app
 
-
-API_HOST = 'https://cloud-api.yandex.net/v1/disk'
-UPLOAD_URL = f'{API_HOST}/resources/upload'
-DOWNLOAD_URL = f'{API_HOST}/resources/download'
+from constants import DOWNLOAD_URL, UPLOAD_URL
 
 
 async def upload_file(session, filename, file_data):
@@ -16,7 +13,7 @@ async def upload_file(session, filename, file_data):
         'Authorization': f'OAuth {current_app.config["DISK_TOKEN"]}'
     }
 
-    disk_path = f'app: /{uuid4().hex}_{filename}'
+    disk_path = 'app:/' + f'{uuid4().hex}_{filename}'
 
     async with session.get(
         UPLOAD_URL,

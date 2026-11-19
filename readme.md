@@ -1,60 +1,141 @@
-### Как запустить проект Yacut:
+# YaCut — сервис укорачивания ссылок
 
-Клонировать репозиторий и перейти в него в командной строке:
+YaCut — веб-приложение на Flask для создания коротких ссылок. Сервис позволяет сократить длинный URL и получить удобный адрес с перенаправлением на исходную страницу.
 
-```
-git clone 
-```
+Дополнительная возможность — асинхронная загрузка нескольких файлов на Яндекс Диск с генерацией коротких ссылок для их скачивания.
 
-```
-cd yacut
-```
+### Технологии
 
-Cоздать и активировать виртуальное окружение:
+Python, Flask, Flask-SQLAlchemy, SQLite, Flask-WTF, WTForms, aiohttp, asyncio, python-dotenv, HTML, CSS, Bootstrap, pytest, Flake8.
 
-```
-python3 -m venv venv
-```
+### Установка и запуск
 
-* Если у вас Linux/macOS
+#### Получение исходного кода
 
-    ```
-    source venv/bin/activate
-    ```
+Клонируйте репозиторий и перейдите в директорию проекта:
 
-* Если у вас windows
-
-    ```
-    source venv/scripts/activate
-    ```
-
-Установить зависимости из файла requirements.txt:
-
-```
-python3 -m pip install --upgrade pip
+```bash
+git clone https://github.com/juliyasg/async-yacut.git
+cd async-yacut
 ```
 
+#### Подготовка окружения
+
+```bash
+python -m venv venv
 ```
+
+Активация для Windows (Git Bash):
+
+```bash
+source venv/Scripts/activate
+```
+
+Для Linux / macOS:
+
+```bash
+source venv/bin/activate
+```
+
+#### Установка необходимых библиотек
+
+```bash
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Создать в директории проекта файл .env с четыремя переменными окружения:
+#### Конфигурация
 
+В корне проекта создайте файл .env со следующими переменными:
 ```
-FLASK_APP=yacut
-FLASK_ENV=development
 SECRET_KEY=your_secret_key
-DB=sqlite:///db.sqlite3
+DATABASE_URI=sqlite:///yacut.db
+DISK_TOKEN=your_yandex_disk_oauth_token
 ```
 
-Создать базу данных и применить миграции:
+Файл .env содержит конфиденциальные данные и не должен добавляться в Git. В проекте он указан в .gitignore.
+
+#### Создание базы данных
+
+```bash
+python -c "from yacut import app, db; app.app_context().push(); db.create_all()"
+```
+
+#### Запуск сервера
+
+```bash
+python -m flask --app yacut run
+```
+
+После запуска сервер будет доступен по адресам:
+
+http://127.0.0.1:5000/
+http://127.0.0.1:5000/files
+
+Страница / предназначена для сокращения ссылок, /files — для загрузки файлов на Яндекс Диск.
+
+### REST API
+
+YaCut поддерживает два API-эндпоинта для работы с короткими ссылками.
+
+#### Создание ссылки
+
+POST /api/id/
+
+Пример запроса:
+```json
+{
+  "url": "https://www.python.org/",
+  "custom_id": "python2026"
+}
+```
+
+Поле url обязательно. Поле custom_id можно не передавать — в таком случае короткий идентификатор будет сгенерирован автоматически.
+
+Пример ответа (HTTP 201):
+```json
+{
+  "url": "https://www.python.org/",
+  "short_link": "http://127.0.0.1:5000/python2026"
+}
+```
+
+#### Получение исходного адреса
 
 ```
-flask db upgrade
+GET /api/id/<short_id>/
 ```
 
-Запустить проект:
+Пример запроса:
+```
+GET http://127.0.0.1:5000/api/id/python2026/
+```
 
+Пример ответа (HTTP 200):
+```json
+{
+  "url": "https://www.python.org/"
+}
 ```
-flask run
+
+При ошибках API возвращает JSON с полем message и соответствующий HTTP-статус.
+
+Например, если короткий идентификатор отсутствует в базе данных, возвращается ответ со статусом 404.
+
+### Тестирование
+
+Для проверки работы приложения предусмотрены автоматические тесты.
+
+**Запуск тестов из корневой директории проекта:**
+```bash
+python -m pytest -q
 ```
+
+**Проверка соответствия Python-кода стилю PEP 8 с помощью Flake8:**
+```bash
+python -m flake8 yacut config.py constants.py
+```
+
+### Автор
+
+[juliyasg](https://github.com/juliyasg)
